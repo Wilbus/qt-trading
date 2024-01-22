@@ -47,12 +47,19 @@ MainWindow::MainWindow(QWidget* parent)
     //TODO: make it so we can display oscillators graph as well
     volumeAxisRect = new QCPAxisRect(customPlot);
     customPlot->plotLayout()->addElement(1, 0, volumeAxisRect);
-    volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
+    volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 150));
     volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
     volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
+    //doesnt seem to work. May just have to accept that it can scroll
+    // and zoom below zero
+    volumeAxisRect->axis(QCPAxis::atLeft)->setRangeLower(0);
+
+    //bring the 2 plots close together
     customPlot->plotLayout()->setRowSpacing(1);
     volumeAxisRect->setAutoMargins(QCP::msLeft|QCP::msRight|QCP::msBottom);
     volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
+
+    //intialize volume bars
     volumeBars = new QCPBars(volumeAxisRect->axis(QCPAxis::atBottom), volumeAxisRect->axis(QCPAxis::atLeft));
     volumeBars->setName("Volume");
 
@@ -93,14 +100,8 @@ void MainWindow::openFileActionFn()
         // assuming keys always contain timestamp, price_open, price_high, price_low, price_close, volume
         log("%1 timestamps read\n", csvDataMap.at("timestamp").size());
 
-        QVector<QString> dateLabels;
         for (int i = 0; i < csvDataMap.at("timestamp").size(); i++)
         {
-            //convert unixtime to string dates
-            QDateTime dateTime = QDateTime::fromSecsSinceEpoch(static_cast<quint64>(csvDataMap.at("timestamp")[i]));
-            QString dateString = dateTime.toString("yyyy-MM-dd hh:mm:ss");
-            dateLabels.append(dateString);
-
             candlestickPlot->addData(csvDataMap.at("timestamp")[i], csvDataMap.at("price_open")[i],
                 csvDataMap.at("price_high")[i], csvDataMap.at("price_low")[i], csvDataMap.at("price_close")[i]);
             volumeBars->addData(csvDataMap.at("timestamp")[i], csvDataMap.at("volume")[i]);
@@ -112,8 +113,19 @@ void MainWindow::openFileActionFn()
             }
         }
 
+        //automatically converts the unixtimestamp into string datetime
+        QSharedPointer<QCPAxisTickerDateTime> dateTimeTicker(new QCPAxisTickerDateTime);
+        customPlot->xAxis->setTicker(dateTimeTicker);
+        customPlot->xAxis->setTickLength(csvDataMap.at("timestamp").size());
+        dateTimeTicker->setDateTimeFormat("yyyy-MM-dd\nhh:mm:ss");
+
+        QSharedPointer<QCPAxisTickerDateTime> volumeDateTimeTicker(new QCPAxisTickerDateTime);
+        volumeAxisRect->axis(QCPAxis::atBottom)->setTicker(volumeDateTimeTicker);
+        volumeDateTimeTicker->setDateTimeFormat("yyyy-MM-dd\nhh:mm:ss");
+
         candlestickPlot->setWidth(50);
         candlestickPlot->rescaleAxes();
+        volumeBars->setWidth(50);
         volumeBars->rescaleAxes();
         customPlot->legend->setVisible(true);
         customPlot->replot();
@@ -210,12 +222,18 @@ void MainWindow::onMouseMove(QMouseEvent* event)
         if (dataPoints.dataPointCount() > 0)
         {
             it = candlestickPlot->data()->at(dataPoints.dataRange().begin());
+
+            QDateTime dateTime = QDateTime::fromSecsSinceEpoch(static_cast<quint64>(it->key));
+            QString dateString = dateTime.toString("yyyy-MM-dd hh:mm:ss");
+            // Format floating-point numbers with 2 decimal places precision
+            QString openString = QString::number(it->open, 'f', 2);
+            QString highString = QString::number(it->high, 'f', 2);
+            QString lowString = QString::number(it->low, 'f', 2);
+            QString closeString = QString::number(it->close, 'f', 2);
+
             QString trackerText = QString("Timestamp: %1\nO: %2\nH: %3\nL: %4\nC: %5")
-                                      .arg(it->key)
-                                      .arg(it->open)
-                                      .arg(it->high)
-                                      .arg(it->low)
-                                      .arg(it->close);
+                                      .arg(dateString, openString, highString, lowString, closeString);
+
             customPlot->setToolTip(trackerText);
         }
     }
