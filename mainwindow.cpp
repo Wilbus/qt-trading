@@ -41,6 +41,7 @@ MainWindow::MainWindow(QWidget* parent)
     candlestickPlot->setChartStyle(QCPFinancial::csCandlestick);
     candlestickPlot->setBrushPositive(QColor(0, 255, 0));
     candlestickPlot->setBrushNegative(QColor(255, 0, 0));
+    candlestickPlot->setName("Candles");
 
     //intialize volume bar graph
     //TODO: make it so we can display oscillators graph as well
@@ -53,6 +54,7 @@ MainWindow::MainWindow(QWidget* parent)
     volumeAxisRect->setAutoMargins(QCP::msLeft|QCP::msRight|QCP::msBottom);
     volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
     volumeBars = new QCPBars(volumeAxisRect->axis(QCPAxis::atBottom), volumeAxisRect->axis(QCPAxis::atLeft));
+    volumeBars->setName("Volume");
 
     //tie the volume and candlestick axis range zoom/drags together
     connect(customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), volumeAxisRect->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
@@ -113,6 +115,7 @@ void MainWindow::openFileActionFn()
         candlestickPlot->setWidth(50);
         candlestickPlot->rescaleAxes();
         volumeBars->rescaleAxes();
+        customPlot->legend->setVisible(true);
         customPlot->replot();
     }
     catch (std::exception& e)
@@ -207,9 +210,9 @@ void MainWindow::onMouseMove(QMouseEvent* event)
         if (dataPoints.dataPointCount() > 0)
         {
             it = candlestickPlot->data()->at(dataPoints.dataRange().begin());
-            QString trackerText = QString("Timestamp: %1\nO: %2\nH: %3\nL: %4\nC: %4")
+            QString trackerText = QString("Timestamp: %1\nO: %2\nH: %3\nL: %4\nC: %5")
                                       .arg(it->key)
-                                      .arg(it->close)
+                                      .arg(it->open)
                                       .arg(it->high)
                                       .arg(it->low)
                                       .arg(it->close);
