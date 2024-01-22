@@ -74,6 +74,8 @@ private:
 
     QCPFinancial* candlestickPlot;
     QCPGraph* indicatorsPlot;
+    QCPAxisRect* volumeAxisRect;
+    QCPBars* volumeBars;
 
     QPlainTextEdit* loggerTextBox;
 

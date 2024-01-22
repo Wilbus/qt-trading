@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget* parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    resize(QSize(800, 600));
+    resize(QSize(1920, 800));
 
     loggerTextBox = new QPlainTextEdit(this);
     loggerTextBox->setReadOnly(true);
@@ -29,8 +29,8 @@ MainWindow::MainWindow(QWidget* parent)
     customPlot->setMouseTracking(true);
     customPlot->axisRect()->setupFullAxesBox();
     customPlot->yAxis->setSelectableParts(QCPAxis::spAxis);
-    customPlot->xAxis->setLabel("x Axis");
-    customPlot->yAxis->setLabel("y Axis");
+    //customPlot->xAxis->setLabel("x Axis");
+    //customPlot->yAxis->setLabel("y Axis");
     // set Y-axis to be interactive for range dragging
     // customPlot->axisRect()->setRangeZoom(Qt::Vertical);
 
@@ -48,6 +48,20 @@ MainWindow::MainWindow(QWidget* parent)
     candlestickPlot->setChartStyle(QCPFinancial::csCandlestick);
     candlestickPlot->setBrushPositive(QColor(0, 255, 0));
     candlestickPlot->setBrushNegative(QColor(255, 0, 0));
+
+    volumeAxisRect = new QCPAxisRect(customPlot);
+    customPlot->plotLayout()->addElement(1, 0, volumeAxisRect);
+    volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
+    volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
+    volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
+    customPlot->plotLayout()->setRowSpacing(1);
+    volumeAxisRect->setAutoMargins(QCP::msLeft|QCP::msRight|QCP::msBottom);
+    volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
+    volumeBars = new QCPBars(volumeAxisRect->axis(QCPAxis::atBottom), volumeAxisRect->axis(QCPAxis::atLeft));
+
+    //tie the volume and candlestick axis range zoom/drags together
+    connect(customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), volumeAxisRect->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
+    connect(volumeAxisRect->axis(QCPAxis::atBottom), SIGNAL(rangeChanged(QCPRange)), customPlot->xAxis, SLOT(setRange(QCPRange)));
 
     QVBoxLayout* mainLayout = new QVBoxLayout;
     mainLayout->addWidget(customPlot);
@@ -79,18 +93,30 @@ void MainWindow::openFileActionFn()
 
         // assuming keys always contain timestamp, price_open, price_high, price_low, price_close, volume
         log("%1 timestamps read\n", csvDataMap.at("timestamp").size());
+
+        QVector<QString> dateLabels;
         for (int i = 0; i < csvDataMap.at("timestamp").size(); i++)
         {
+            //convert unixtime to string dates
+            QDateTime dateTime = QDateTime::fromSecsSinceEpoch(static_cast<quint64>(csvDataMap.at("timestamp")[i]));
+            QString dateString = dateTime.toString("yyyy-MM-dd hh:mm:ss");
+            dateLabels.append(dateString);
+
             candlestickPlot->addData(csvDataMap.at("timestamp")[i], csvDataMap.at("price_open")[i],
                 csvDataMap.at("price_high")[i], csvDataMap.at("price_low")[i], csvDataMap.at("price_close")[i]);
+            volumeBars->addData(csvDataMap.at("timestamp")[i], csvDataMap.at("volume")[i]);
+
             if (csvDataMap.at("sma9").at(i) > -1e6)
             {
                 indicatorsPlot->addData(csvDataMap.at("timestamp")[i], csvDataMap.at("sma9").at(i));
                 updateMinMaxAxisValues(csvDataMap["timestamp"][i], csvDataMap["price_high"][i]);
             }
         }
+
+        //QCPAxis dateAxis = QCPAxis(customPlot->axisRect(), QCPAxis::atBottom);
         candlestickPlot->setWidth(50);
         candlestickPlot->rescaleAxes();
+        volumeBars->rescaleAxes();
         customPlot->replot();
     }
     catch (std::exception& e)
