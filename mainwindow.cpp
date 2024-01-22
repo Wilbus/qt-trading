@@ -31,24 +31,19 @@ MainWindow::MainWindow(QWidget* parent)
     customPlot->yAxis->setSelectableParts(QCPAxis::spAxis);
     //customPlot->xAxis->setLabel("x Axis");
     //customPlot->yAxis->setLabel("y Axis");
-    // set Y-axis to be interactive for range dragging
-    // customPlot->axisRect()->setRangeZoom(Qt::Vertical);
 
     /*set zoom and scrolling interactions*/
     customPlot->setInteractions(QCP::iRangeZoom | QCP::iRangeDrag | QCP::iSelectAxes | QCP::iSelectPlottables);
-
-    // seems like zooming and scrolling still works without these callbacks?
-    // connect(customPlot, SIGNAL(onMousePress(QMouseEvent*)), this, SLOT(onMousePress()));
-    // connect(customPlot, &QCustomPlot::mouseWheel, this, &MainWindow::onMouseWheel);
-    // connect(customPlot, &QCustomPlot::mousePress, this, &MainWindow::onMousePress);
+    //mouse move events for displaying data tooltip when mouse hovers over
     connect(customPlot, &QCustomPlot::mouseMove, this, &MainWindow::onMouseMove);
-    // connect(customPlot, &QCustomPlot::mouseRelease, this, &MainWindow::onMouseRelease);
 
     candlestickPlot = new QCPFinancial(customPlot->xAxis, customPlot->yAxis);
     candlestickPlot->setChartStyle(QCPFinancial::csCandlestick);
     candlestickPlot->setBrushPositive(QColor(0, 255, 0));
     candlestickPlot->setBrushNegative(QColor(255, 0, 0));
 
+    //intialize volume bar graph
+    //TODO: make it so we can display oscillators graph as well
     volumeAxisRect = new QCPAxisRect(customPlot);
     customPlot->plotLayout()->addElement(1, 0, volumeAxisRect);
     volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
@@ -63,6 +58,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(customPlot->xAxis, SIGNAL(rangeChanged(QCPRange)), volumeAxisRect->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
     connect(volumeAxisRect->axis(QCPAxis::atBottom), SIGNAL(rangeChanged(QCPRange)), customPlot->xAxis, SLOT(setRange(QCPRange)));
 
+    //set layout
     QVBoxLayout* mainLayout = new QVBoxLayout;
     mainLayout->addWidget(customPlot);
     mainLayout->addWidget(loggerTextBox);
@@ -88,6 +84,7 @@ void MainWindow::openFileActionFn()
         maxX = std::numeric_limits<double>::min();
         maxY = std::numeric_limits<double>::min();
 
+        //TODO: make it so we can add multiple indicators
         indicatorsPlot = customPlot->addGraph();
         indicatorsPlot->setPen(QPen(Qt::blue));
 
@@ -113,7 +110,6 @@ void MainWindow::openFileActionFn()
             }
         }
 
-        //QCPAxis dateAxis = QCPAxis(customPlot->axisRect(), QCPAxis::atBottom);
         candlestickPlot->setWidth(50);
         candlestickPlot->rescaleAxes();
         volumeBars->rescaleAxes();
@@ -197,58 +193,8 @@ void MainWindow::readCsv(const QString& filePath)
     }
 }
 
-// seems like zooming and scrolling still works without these callbacks?
-#if 0
-void  MainWindow::onMouseWheel(QWheelEvent* event)
-{
-    // Handle zooming
-    double sensitivity = 0.00001;
-    double factor = (event->angleDelta().y() > 0) ? (1.0 + sensitivity) : (1.0 - sensitivity);
-
-    customPlot->axisRect()->axis(QCPAxis::atBottom)->scaleRange(factor, 1.0);
-    customPlot->axisRect()->axis(QCPAxis::atLeft)->scaleRange(factor, 1.0);
-
-    event->accept();
-}
-
-void MainWindow::onMousePress(QMouseEvent* event)
-{
-    // Handle dragging start
-    /*if (event->button() == Qt::RightButton)
-    {
-        onMousePressRecordPoint->setX(event->position().x());
-        onMousePressRecordPoint->setY(event->position().y());
-
-        customPlot->setInteraction(QCP::iRangeDrag, true);
-        event->accept();
-    }*/
-    //if (event->button() == Qt::LeftButton && customPlot->axisRect()->axis(QCPAxis::atLeft)->selectedParts().testFlag(QCPAxis::spAxis))
-    /*if (customPlot->yAxis->selectedParts().testFlag(QCPAxis::spAxis))
-    {
-        //customPlot->axisRect()->setRangeZoom(Qt::Vertical);
-        onMousePressRecordPoint->setX(event->position().x());
-        onMousePressRecordPoint->setY(event->position().y());
-        event->accept();
-    }*/
-}
-#endif
 void MainWindow::onMouseMove(QMouseEvent* event)
 {
-    // Handle dragging
-    /*if (customPlot->testAttribute(Qt::WA_UnderMouse) && customPlot->interactions() == QCP::iRangeDrag)
-    {
-        customPlot->axisRect()->axis(QCPAxis::atBottom)->moveRange(event->position().x() -
-    onMousePressRecordPoint->x()); customPlot->axisRect()->axis(QCPAxis::atLeft)->moveRange(onMousePressRecordPoint->y()
-    - event->position().y()); event->accept();
-    }*/
-    /*double sensitivity = 0.00001;
-    auto mousePosDelta = event->pos().y() - onMousePressRecordPoint->y();
-    double factor = (mousePosDelta > 0) ? (1.0 + sensitivity) : (1.0 - sensitivity);
-    if (customPlot->testAttribute(Qt::WA_UnderMouse) && customPlot->axisRect()->rangeZoom().testFlag(Qt::Vertical))
-    {
-        customPlot->axisRect()->axis(QCPAxis::atLeft)->scaleRange(factor, 1.0);
-        event->accept();
-    }*/
     if (candlestickPlot == nullptr)
     {
         return;
@@ -271,22 +217,7 @@ void MainWindow::onMouseMove(QMouseEvent* event)
         }
     }
 }
-#if 0
-void  MainWindow::onMouseRelease(QMouseEvent* event)
-{
-    // Handle dragging end
-    /*if (event->button() == Qt::RightButton)
-    {
-        customPlot->setInteraction(QCP::iRangeDrag, false);
-        event->accept();
-    }*/
-    /*if (event->button() == Qt::LeftButton && customPlot->axisRect()->rangeZoom().testFlag(Qt::Vertical))
-    {
-        //customPlot->axisRect()->setRangeZoom(Qt::);  // Disable range zooming after release
-        event->accept();
-    }*/
-}
-#endif
+
 MainWindow::~MainWindow()
 {
     delete ui;
