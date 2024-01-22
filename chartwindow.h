@@ -1,25 +1,21 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
-
-#include "qcustomplot.h"
+#ifndef CHARTWINDOW_H
+#define CHARTWINDOW_H
 
 #include <QMainWindow>
+#include "qcustomplot.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
-QT_END_NAMESPACE
-
-class MainWindow : public QMainWindow
+class ChartWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
-    explicit MainWindow(QWidget* parent = nullptr);
-    ~MainWindow();
+    explicit ChartWindow(QWidget *parent = nullptr);
 
-    void addChartMenuAction();
+    void openFileActionFn();
+    void updateMinMaxAxisValues(double x, double y);
+    void onMouseWheel(QWheelEvent* event);
+    void onMousePress(QMouseEvent* event);
+    void onMouseMove(QMouseEvent* event);
+    void onMouseRelease(QMouseEvent* event);
 
     void appendLog(const QString& message, const QTextCharFormat& format)
     {
@@ -57,13 +53,25 @@ public:
     void readCsv(const QString& filePath);
 
 private:
-    Ui::MainWindow* ui;
     QWidget* centralWidget;
     QMenuBar* menuBar;
     QMenu* fileMenu;
-    QMenu* chartingMenu;
-    QAction* addChartAction;
+    QAction* openFileAction;
+
+    QCustomPlot* customPlot;
+    QPointF* onMousePressRecordPoint;
+    double minX, minY, maxX, maxY;
+
+    QCPFinancial* candlestickPlot;
+    QCPGraph* indicatorsPlot;
+    QCPAxisRect* volumeAxisRect;
+    QCPBars* volumeBars;
 
     QPlainTextEdit* loggerTextBox;
+
+    std::unordered_map<QString, QVector<double>> csvDataMap;
+    std::unordered_map<int, QString> keyIndices;
+signals:
 };
-#endif // MAINWINDOW_H
+
+#endif // CHARTWINDOW_H
